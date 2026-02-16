@@ -1,0 +1,14 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "newprompt"
+version = "0.1.0"
+description = "CLI tool for managing Claude Code prompt history directories"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+
+[project.scripts]
+newprompt = "newprompt.cli:main"
