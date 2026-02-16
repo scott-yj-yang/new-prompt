@@ -1,5 +1,198 @@
-"""CLI entry point (placeholder)."""
+#!/usr/bin/env python3
+"""newprompt - Create Claude Code prompt history directories.
+
+Usage:
+    newprompt keyword1 keyword2 ...
+    newprompt --launch keyword1 keyword2 ...
+    newprompt --save-chat SESSION_ID PROMPT_DIR
+"""
+
+import argparse
+import datetime
+import glob
+import os
+import re
+import shutil
+import subprocess
+import sys
+import uuid
+
+DEFAULT_HISTORY_DIR = "/home/talmolab/Desktop/SalkResearch/ClaudeCode_PromptHistory"
+DEFAULT_CLAUDE_PROJECTS_DIR = os.path.expanduser(
+    "~/.claude/projects/-home-talmolab-Desktop-SalkResearch"
+)
+
+
+def get_next_seq(date_prefix: str, history_dir: str = DEFAULT_HISTORY_DIR) -> int:
+    """Find the next sequence number for a given date prefix."""
+    pattern = os.path.join(history_dir, f"{date_prefix}-*")
+    existing = glob.glob(pattern)
+    max_seq = 0
+    for d in existing:
+        basename = os.path.basename(d)
+        match = re.match(rf"^{re.escape(date_prefix)}-(\d+)-", basename)
+        if match:
+            seq = int(match.group(1))
+            max_seq = max(max_seq, seq)
+    return max_seq + 1
+
+
+def create_prompt_dir(
+    keywords: list[str],
+    history_dir: str = DEFAULT_HISTORY_DIR,
+    seq_override: int | None = None,
+) -> str:
+    """Create the prompt directory and return its path."""
+    now = datetime.datetime.now()
+    date_prefix = f"{now.month}-{now.day:02d}-{now.year % 100}"
+
+    seq = seq_override if seq_override is not None else get_next_seq(date_prefix, history_dir)
+
+    keyword_slug = "-".join(k.lower().replace(" ", "-") for k in keywords)
+    dirname = f"{date_prefix}-{seq}-{keyword_slug}"
+    dirpath = os.path.join(history_dir, dirname)
+
+    os.makedirs(dirpath, exist_ok=True)
+    return dirpath
+
+
+def write_prompt_md(dirpath: str) -> str:
+    """Write the prompt.md template file."""
+    filepath = os.path.join(dirpath, "prompt.md")
+    content = f"""\
+
+
+
+
+Please write your plan using your plan skill, and save to {dirpath}.
+"""
+    with open(filepath, "w") as f:
+        f.write(content)
+    return filepath
+
+
+def save_chat(
+    session_id: str,
+    prompt_dir: str,
+    claude_projects_dir: str = DEFAULT_CLAUDE_PROJECTS_DIR,
+) -> None:
+    """Copy the chat history JSONL into the prompt directory.
+
+    Uses a direct file copy (not symlink) so the history is preserved
+    even if Claude Code cleans up its internal history files.
+    """
+    jsonl_path = os.path.join(claude_projects_dir, f"{session_id}.jsonl")
+    if not os.path.exists(jsonl_path):
+        print(f"Error: Chat history not found at {jsonl_path}")
+        sys.exit(1)
+
+    dest_path = os.path.join(prompt_dir, "chat_history.jsonl")
+    if os.path.exists(dest_path):
+        os.remove(dest_path)
+
+    shutil.copy2(jsonl_path, dest_path)
+    size_mb = os.path.getsize(dest_path) / (1024 * 1024)
+    print(f"Chat history copied to: {dest_path} ({size_mb:.1f} MB)")
+
+
+def launch_claude(prompt_dir: str, claude_projects_dir: str = DEFAULT_CLAUDE_PROJECTS_DIR) -> str:
+    """Launch Claude Code with a known session ID. Returns the session ID."""
+    session_id = str(uuid.uuid4())
+
+    # Write session ID to the prompt dir for later reference
+    meta_path = os.path.join(prompt_dir, ".session_id")
+    with open(meta_path, "w") as f:
+        f.write(session_id)
+
+    print(f"Launching Claude Code with session ID: {session_id}")
+    print(f"Prompt directory: {prompt_dir}")
+    print(f"After the session, run: newprompt --save-chat {session_id} {prompt_dir}")
+    print()
+
+    env = os.environ.copy()
+    env.pop("CLAUDECODE", None)  # Allow launching from within a Claude session
+    try:
+        subprocess.run(["claude", "--session-id", session_id], env=env)
+    except KeyboardInterrupt:
+        pass
+
+    # Auto-copy chat history after session ends
+    jsonl_path = os.path.join(claude_projects_dir, f"{session_id}.jsonl")
+    if os.path.exists(jsonl_path):
+        save_chat(session_id, prompt_dir, claude_projects_dir)
+    else:
+        print(f"\nNote: Chat history file not found. You can manually save it later:")
+        print(f"  newprompt --save-chat {session_id} {prompt_dir}")
+
+    return session_id
 
 
 def main():
-    print("newprompt: not yet implemented")
+    parser = argparse.ArgumentParser(
+        description="Create Claude Code prompt history directories",
+        usage=(
+            "newprompt [--launch] [--seq N] keyword1 keyword2 ...\n"
+            "       newprompt --save-chat SESSION_ID PROMPT_DIR"
+        ),
+    )
+    parser.add_argument(
+        "keywords", nargs="*", help="Keywords describing the prompt topic"
+    )
+    parser.add_argument(
+        "--launch",
+        action="store_true",
+        help="Launch Claude Code after creating the directory",
+    )
+    parser.add_argument(
+        "--seq", type=int, default=None,
+        help="Override the auto-detected sequence number",
+    )
+    parser.add_argument(
+        "--save-chat",
+        nargs=2,
+        metavar=("SESSION_ID", "PROMPT_DIR"),
+        help="Copy chat history for a session into a prompt directory",
+    )
+    parser.add_argument(
+        "--history-dir",
+        default=DEFAULT_HISTORY_DIR,
+        help=f"Base directory for prompt history (default: {DEFAULT_HISTORY_DIR})",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print what would be created without creating it",
+    )
+
+    args = parser.parse_args()
+
+    if args.save_chat:
+        session_id, prompt_dir = args.save_chat
+        save_chat(session_id, prompt_dir)
+        return
+
+    if not args.keywords:
+        parser.error("At least one keyword is required")
+
+    dirpath = create_prompt_dir(args.keywords, args.history_dir, args.seq)
+
+    if args.dry_run:
+        print(f"Would create: {dirpath}")
+        print(f"Would write:  {dirpath}/prompt.md")
+        return
+
+    prompt_path = write_prompt_md(dirpath)
+
+    print(f"Created: {dirpath}")
+    print(f"Prompt:  {prompt_path}")
+    print()
+    print(f"Edit your prompt:")
+    print(f"  vim {prompt_path}")
+
+    if args.launch:
+        print()
+        launch_claude(dirpath)
+
+
+if __name__ == "__main__":
+    main()
