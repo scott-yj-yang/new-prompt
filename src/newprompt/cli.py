@@ -112,7 +112,7 @@ def launch_claude(prompt_dir: str, claude_projects_dir: str = DEFAULT_CLAUDE_PRO
     env = os.environ.copy()
     env.pop("CLAUDECODE", None)  # Allow launching from within a Claude session
     try:
-        subprocess.run(["claude", "--session-id", session_id], env=env)
+        subprocess.run(["claude", "--dangerously-skip-permissions", "--session-id", session_id], env=env)
     except KeyboardInterrupt:
         pass
 
