@@ -151,6 +151,20 @@ def test_always_launch_sets_config(tmp_path):
     assert config["always_launch"] is True
 
 
+def test_skip_permissions_config(tmp_path):
+    """--skip-permissions should persist to config."""
+    config_path = str(tmp_path / "config.json")
+    save_config({"skip_permissions": True}, config_path=config_path)
+    config = load_config(config_path=config_path)
+    assert config["skip_permissions"] is True
+
+
+def test_skip_permissions_default_false(tmp_path):
+    """skip_permissions should default to False."""
+    config = load_config(config_path=str(tmp_path / "config.json"))
+    assert config["skip_permissions"] is False
+
+
 def test_find_session_by_directory_name(tmp_path):
     """Should find session ID from a prompt directory's .session_id file."""
     history_dir = tmp_path / "history"

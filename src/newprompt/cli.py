@@ -23,7 +23,7 @@ DEFAULT_CLAUDE_PROJECTS_DIR = os.path.expanduser(
     "~/.claude/projects/-home-talmolab-Desktop-SalkResearch"
 )
 DEFAULT_CONFIG_PATH = os.path.expanduser("~/.config/newprompt/config.json")
-CONFIG_DEFAULTS = {"always_launch": False}
+CONFIG_DEFAULTS = {"always_launch": False, "skip_permissions": False}
 
 
 def load_config(config_path: str = DEFAULT_CONFIG_PATH) -> dict:
@@ -218,7 +218,7 @@ def save_chat(
     print(f"Markdown chat history: {md_path}")
 
 
-def launch_claude(prompt_dir: str, claude_projects_dir: str = DEFAULT_CLAUDE_PROJECTS_DIR) -> str:
+def launch_claude(prompt_dir: str, claude_projects_dir: str = DEFAULT_CLAUDE_PROJECTS_DIR, skip_permissions: bool = False) -> str:
     """Launch Claude Code with a known session ID. Returns the session ID."""
     session_id = str(uuid.uuid4())
 
@@ -232,10 +232,15 @@ def launch_claude(prompt_dir: str, claude_projects_dir: str = DEFAULT_CLAUDE_PRO
     print(f"After the session, run: newprompt --save-chat {session_id} {prompt_dir}")
     print()
 
+    cmd = ["claude"]
+    if skip_permissions:
+        cmd.append("--dangerously-skip-permissions")
+    cmd.extend(["--session-id", session_id])
+
     env = os.environ.copy()
     env.pop("CLAUDECODE", None)  # Allow launching from within a Claude session
     try:
-        subprocess.run(["claude", "--dangerously-skip-permissions", "--session-id", session_id], env=env)
+        subprocess.run(cmd, env=env)
     except KeyboardInterrupt:
         pass
 
@@ -352,6 +357,16 @@ def main():
         help="Override --always-launch for this invocation only",
     )
     parser.add_argument(
+        "--skip-permissions",
+        action="store_true",
+        help="Set persistent config to pass --dangerously-skip-permissions to Claude Code",
+    )
+    parser.add_argument(
+        "--no-skip-permissions",
+        action="store_true",
+        help="Override --skip-permissions for this invocation only",
+    )
+    parser.add_argument(
         "--resume",
         metavar="QUERY",
         help="Resume a previous session by directory name, keyword, or session UUID",
@@ -376,10 +391,18 @@ def main():
         print(f"Prompt directory: {prompt_dir}")
         print()
 
+        config = load_config()
+        use_skip = args.skip_permissions or (config.get("skip_permissions", False) and not args.no_skip_permissions)
+
+        cmd = ["claude"]
+        if use_skip:
+            cmd.append("--dangerously-skip-permissions")
+        cmd.extend(["--resume", "--session-id", session_id])
+
         env = os.environ.copy()
         env.pop("CLAUDECODE", None)
         try:
-            subprocess.run(["claude", "--dangerously-skip-permissions", "--resume", "--session-id", session_id], env=env)
+            subprocess.run(cmd, env=env)
         except KeyboardInterrupt:
             pass
 
@@ -397,6 +420,16 @@ def main():
         save_config(config)
         print("Config saved: always_launch = True")
         print("Claude Code will now launch automatically. Use --no-launch to skip.")
+        if not args.keywords:
+            return
+
+    # Handle --skip-permissions config setting
+    if args.skip_permissions:
+        config = load_config()
+        config["skip_permissions"] = True
+        save_config(config)
+        print("Config saved: skip_permissions = True")
+        print("Claude Code will launch with --dangerously-skip-permissions. Use --no-skip-permissions to skip.")
         if not args.keywords:
             return
 
@@ -421,10 +454,11 @@ def main():
     # Determine whether to launch
     config = load_config()
     should_launch = args.launch or (config.get("always_launch", False) and not args.no_launch)
+    use_skip = args.skip_permissions or (config.get("skip_permissions", False) and not args.no_skip_permissions)
 
     if should_launch:
         print()
-        launch_claude(dirpath)
+        launch_claude(dirpath, skip_permissions=use_skip)
 
 
 if __name__ == "__main__":

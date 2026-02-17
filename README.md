@@ -135,6 +135,19 @@ newprompt my new feature
 newprompt --no-launch my new feature
 ```
 
+### Skip permissions (auto-approve all tool calls)
+
+```bash
+# Enable: pass --dangerously-skip-permissions to Claude Code
+newprompt --skip-permissions
+
+# Then launches will auto-approve all tool calls:
+newprompt --launch my new feature
+
+# Skip for one invocation:
+newprompt --no-skip-permissions --launch my new feature
+```
+
 ### Custom history directory
 
 ```bash
