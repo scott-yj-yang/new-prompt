@@ -22,6 +22,27 @@ DEFAULT_HISTORY_DIR = "/home/talmolab/Desktop/SalkResearch/ClaudeCode_PromptHist
 DEFAULT_CLAUDE_PROJECTS_DIR = os.path.expanduser(
     "~/.claude/projects/-home-talmolab-Desktop-SalkResearch"
 )
+DEFAULT_CONFIG_PATH = os.path.expanduser("~/.config/newprompt/config.json")
+CONFIG_DEFAULTS = {"always_launch": False}
+
+
+def load_config(config_path: str = DEFAULT_CONFIG_PATH) -> dict:
+    """Load config from disk, returning defaults if file doesn't exist."""
+    if not os.path.exists(config_path):
+        return dict(CONFIG_DEFAULTS)
+    with open(config_path) as f:
+        stored = json.load(f)
+    config = dict(CONFIG_DEFAULTS)
+    config.update(stored)
+    return config
+
+
+def save_config(config: dict, config_path: str = DEFAULT_CONFIG_PATH) -> None:
+    """Persist config to disk."""
+    os.makedirs(os.path.dirname(config_path), exist_ok=True)
+    with open(config_path, "w") as f:
+        json.dump(config, f, indent=2)
+        f.write("\n")
 
 
 def get_next_seq(date_prefix: str, history_dir: str = DEFAULT_HISTORY_DIR) -> int:
@@ -265,6 +286,16 @@ def main():
         action="store_true",
         help="Print what would be created without creating it",
     )
+    parser.add_argument(
+        "--always-launch",
+        action="store_true",
+        help="Set persistent config to always launch Claude Code (no need for --launch)",
+    )
+    parser.add_argument(
+        "--no-launch",
+        action="store_true",
+        help="Override --always-launch for this invocation only",
+    )
 
     args = parser.parse_args()
 
@@ -272,6 +303,16 @@ def main():
         session_id, prompt_dir = args.save_chat
         save_chat(session_id, prompt_dir)
         return
+
+    # Handle --always-launch config setting
+    if args.always_launch:
+        config = load_config()
+        config["always_launch"] = True
+        save_config(config)
+        print("Config saved: always_launch = True")
+        print("Claude Code will now launch automatically. Use --no-launch to skip.")
+        if not args.keywords:
+            return
 
     if not args.keywords:
         parser.error("At least one keyword is required")
@@ -291,7 +332,11 @@ def main():
     print(f"Edit your prompt:")
     print(f"  vim {prompt_path}")
 
-    if args.launch:
+    # Determine whether to launch
+    config = load_config()
+    should_launch = args.launch or (config.get("always_launch", False) and not args.no_launch)
+
+    if should_launch:
         print()
         launch_claude(dirpath)
 

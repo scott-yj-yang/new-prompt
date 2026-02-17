@@ -4,7 +4,7 @@ import json
 import os
 import tempfile
 import datetime
-from newprompt.cli import get_next_seq, create_prompt_dir, write_prompt_md, jsonl_to_markdown, save_chat
+from newprompt.cli import get_next_seq, create_prompt_dir, write_prompt_md, jsonl_to_markdown, save_chat, load_config, save_config, CONFIG_DEFAULTS
 
 
 def test_get_next_seq_empty_dir():
@@ -120,3 +120,32 @@ def test_save_chat_creates_markdown(tmp_path):
     md_content = (prompt_dir / "chat_history.md").read_text()
     assert "Hello" in md_content
     assert "Hi there!" in md_content
+
+
+def test_load_config_no_file(tmp_path):
+    """Should return defaults when no config file exists."""
+    config = load_config(config_path=str(tmp_path / "config.json"))
+    assert config == CONFIG_DEFAULTS
+
+
+def test_save_and_load_config(tmp_path):
+    """Should persist config to disk and load it back."""
+    config_path = str(tmp_path / "config.json")
+    save_config({"always_launch": True}, config_path=config_path)
+    config = load_config(config_path=config_path)
+    assert config["always_launch"] is True
+
+
+def test_save_config_creates_parent_dirs(tmp_path):
+    """Should create parent directories if they don't exist."""
+    config_path = str(tmp_path / "subdir" / "config.json")
+    save_config({"always_launch": True}, config_path=config_path)
+    assert os.path.exists(config_path)
+
+
+def test_always_launch_sets_config(tmp_path):
+    """--always-launch should persist to config."""
+    config_path = str(tmp_path / "config.json")
+    save_config({"always_launch": True}, config_path=config_path)
+    config = load_config(config_path=config_path)
+    assert config["always_launch"] is True
