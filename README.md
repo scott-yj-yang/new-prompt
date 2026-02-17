@@ -36,6 +36,7 @@ newprompt --launch CNN visualization debug
 #   → You work with Claude Code normally
 #   → When you exit the session (ctrl+c, /exit, etc.)...
 #   → Auto-copies the chat history JSONL into the prompt directory
+#   → Auto-generates a human-readable chat_history.md
 ```
 
 After the session, your directory looks like:
@@ -45,6 +46,7 @@ After the session, your directory looks like:
 ├── prompt.md           # Your prompt
 ├── plan.md             # Written by Claude during the session
 ├── chat_history.jsonl  # Full conversation log (copied, not symlinked)
+├── chat_history.md     # Human-readable markdown version
 └── .session_id         # The UUID used for this session
 ```
 
@@ -107,6 +109,32 @@ newprompt --save-chat <session-id> /path/to/prompt-dir
 newprompt --seq 42 my-special-prompt
 ```
 
+### Resume a previous session
+
+```bash
+# By directory name
+newprompt --resume 2-17-26-1-my-feature
+
+# By keyword
+newprompt --resume my-feature
+
+# By session UUID
+newprompt --resume abc-123-def-456
+```
+
+### Always launch Claude Code
+
+```bash
+# Enable: Claude Code launches automatically (no --launch needed)
+newprompt --always-launch
+
+# Then just use:
+newprompt my new feature
+
+# Skip launch for one invocation:
+newprompt --no-launch my new feature
+```
+
 ### Custom history directory
 
 ```bash
@@ -120,5 +148,6 @@ newprompt --history-dir /other/path keywords here
 ├── prompt.md           # Your prompt (edit before use)
 ├── plan.md             # Written by Claude during session
 ├── chat_history.jsonl  # Copied from Claude's session log
+├── chat_history.md     # Human-readable markdown version
 └── .session_id         # UUID of the Claude Code session
 ```
