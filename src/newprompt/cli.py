@@ -356,15 +356,16 @@ def main():
         action="store_true",
         help="Override --always-launch for this invocation only",
     )
-    parser.add_argument(
+    skip_perms_group = parser.add_mutually_exclusive_group()
+    skip_perms_group.add_argument(
         "--always-dangerously-skip-permissions",
         action="store_true",
-        help="Set persistent config to pass --dangerously-skip-permissions to Claude Code",
+        help="Set persistent config to always pass --dangerously-skip-permissions to Claude Code",
     )
-    parser.add_argument(
+    skip_perms_group.add_argument(
         "--no-dangerously-skip-permissions",
         action="store_true",
-        help="Override --always-dangerously-skip-permissions for this invocation only",
+        help="Disable persistent --dangerously-skip-permissions (or override for this invocation)",
     )
     parser.add_argument(
         "--resume",
@@ -392,7 +393,10 @@ def main():
         print()
 
         config = load_config()
-        use_skip = args.always_dangerously_skip_permissions or (config.get("skip_permissions", False) and not args.no_dangerously_skip_permissions)
+        if args.no_dangerously_skip_permissions:
+            use_skip = False
+        else:
+            use_skip = args.always_dangerously_skip_permissions or config.get("skip_permissions", False)
 
         cmd = ["claude"]
         if use_skip:
@@ -423,13 +427,21 @@ def main():
         if not args.keywords:
             return
 
-    # Handle --always-dangerously-skip-permissions config setting
+    # Handle --always-dangerously-skip-permissions / --no-dangerously-skip-permissions config
     if args.always_dangerously_skip_permissions:
         config = load_config()
         config["skip_permissions"] = True
         save_config(config)
         print("Config saved: skip_permissions = True")
-        print("Claude Code will launch with --dangerously-skip-permissions. Use --no-dangerously-skip-permissions to skip.")
+        print("Claude Code will launch with --dangerously-skip-permissions.")
+        if not args.keywords:
+            return
+    elif args.no_dangerously_skip_permissions:
+        config = load_config()
+        config["skip_permissions"] = False
+        save_config(config)
+        print("Config saved: skip_permissions = False")
+        print("Claude Code will launch without --dangerously-skip-permissions.")
         if not args.keywords:
             return
 
@@ -454,7 +466,10 @@ def main():
     # Determine whether to launch
     config = load_config()
     should_launch = args.launch or (config.get("always_launch", False) and not args.no_launch)
-    use_skip = args.always_dangerously_skip_permissions or (config.get("skip_permissions", False) and not args.no_dangerously_skip_permissions)
+    if args.no_dangerously_skip_permissions:
+        use_skip = False
+    else:
+        use_skip = args.always_dangerously_skip_permissions or config.get("skip_permissions", False)
 
     if should_launch:
         print()

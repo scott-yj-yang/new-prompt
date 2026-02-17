@@ -165,6 +165,15 @@ def test_skip_permissions_default_false(tmp_path):
     assert config["skip_permissions"] is False
 
 
+def test_skip_permissions_toggle_off(tmp_path):
+    """Should be able to toggle skip_permissions back to False."""
+    config_path = str(tmp_path / "config.json")
+    save_config({"skip_permissions": True}, config_path=config_path)
+    assert load_config(config_path=config_path)["skip_permissions"] is True
+    save_config({"skip_permissions": False}, config_path=config_path)
+    assert load_config(config_path=config_path)["skip_permissions"] is False
+
+
 def test_find_session_by_directory_name(tmp_path):
     """Should find session ID from a prompt directory's .session_id file."""
     history_dir = tmp_path / "history"
