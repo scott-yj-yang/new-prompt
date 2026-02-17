@@ -4,7 +4,7 @@ import json
 import os
 import tempfile
 import datetime
-from newprompt.cli import get_next_seq, create_prompt_dir, write_prompt_md, jsonl_to_markdown, save_chat, load_config, save_config, CONFIG_DEFAULTS
+from newprompt.cli import get_next_seq, create_prompt_dir, write_prompt_md, jsonl_to_markdown, save_chat, load_config, save_config, CONFIG_DEFAULTS, find_session
 
 
 def test_get_next_seq_empty_dir():
@@ -149,3 +149,49 @@ def test_always_launch_sets_config(tmp_path):
     save_config({"always_launch": True}, config_path=config_path)
     config = load_config(config_path=config_path)
     assert config["always_launch"] is True
+
+
+def test_find_session_by_directory_name(tmp_path):
+    """Should find session ID from a prompt directory's .session_id file."""
+    history_dir = tmp_path / "history"
+    prompt_dir = history_dir / "2-17-26-1-my-feature"
+    prompt_dir.mkdir(parents=True)
+    (prompt_dir / ".session_id").write_text("abc-123-def")
+
+    session_id, dirpath = find_session("2-17-26-1-my-feature", str(history_dir))
+    assert session_id == "abc-123-def"
+    assert dirpath == str(prompt_dir)
+
+
+def test_find_session_by_partial_match(tmp_path):
+    """Should find session by partial keyword match."""
+    history_dir = tmp_path / "history"
+    prompt_dir = history_dir / "2-17-26-1-my-feature"
+    prompt_dir.mkdir(parents=True)
+    (prompt_dir / ".session_id").write_text("abc-123-def")
+
+    session_id, dirpath = find_session("my-feature", str(history_dir))
+    assert session_id == "abc-123-def"
+    assert dirpath == str(prompt_dir)
+
+
+def test_find_session_by_uuid(tmp_path):
+    """Should find session when given a raw UUID (searches all .session_id files)."""
+    history_dir = tmp_path / "history"
+    prompt_dir = history_dir / "2-17-26-1-my-feature"
+    prompt_dir.mkdir(parents=True)
+    (prompt_dir / ".session_id").write_text("abc-123-def")
+
+    session_id, dirpath = find_session("abc-123-def", str(history_dir))
+    assert session_id == "abc-123-def"
+    assert dirpath == str(prompt_dir)
+
+
+def test_find_session_not_found(tmp_path):
+    """Should return None, None when no match is found."""
+    history_dir = tmp_path / "history"
+    history_dir.mkdir()
+
+    session_id, dirpath = find_session("nonexistent", str(history_dir))
+    assert session_id is None
+    assert dirpath is None

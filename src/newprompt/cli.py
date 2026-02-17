@@ -250,6 +250,61 @@ def launch_claude(prompt_dir: str, claude_projects_dir: str = DEFAULT_CLAUDE_PRO
     return session_id
 
 
+def find_session(
+    query: str,
+    history_dir: str = DEFAULT_HISTORY_DIR,
+) -> tuple[str | None, str | None]:
+    """Find a session ID and prompt directory by query string.
+
+    The query can be:
+    - An exact directory name (e.g., "2-17-26-1-my-feature")
+    - A partial match on directory name (e.g., "my-feature")
+    - A raw session UUID (searches .session_id files)
+
+    Returns (session_id, dirpath) or (None, None) if not found.
+    """
+    if not os.path.isdir(history_dir):
+        return None, None
+
+    entries = sorted(os.listdir(history_dir), reverse=True)  # newest first
+
+    # Try exact directory name match
+    for entry in entries:
+        full_path = os.path.join(history_dir, entry)
+        if not os.path.isdir(full_path):
+            continue
+        if entry == query:
+            sid_path = os.path.join(full_path, ".session_id")
+            if os.path.exists(sid_path):
+                with open(sid_path) as f:
+                    return f.read().strip(), full_path
+            return None, full_path
+
+    # Try partial match on directory name
+    for entry in entries:
+        full_path = os.path.join(history_dir, entry)
+        if not os.path.isdir(full_path):
+            continue
+        if query in entry:
+            sid_path = os.path.join(full_path, ".session_id")
+            if os.path.exists(sid_path):
+                with open(sid_path) as f:
+                    return f.read().strip(), full_path
+            return None, full_path
+
+    # Try matching by session UUID
+    for entry in entries:
+        full_path = os.path.join(history_dir, entry)
+        sid_path = os.path.join(full_path, ".session_id")
+        if os.path.exists(sid_path):
+            with open(sid_path) as f:
+                stored_id = f.read().strip()
+            if stored_id == query:
+                return stored_id, full_path
+
+    return None, None
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Create Claude Code prompt history directories",
@@ -296,12 +351,43 @@ def main():
         action="store_true",
         help="Override --always-launch for this invocation only",
     )
+    parser.add_argument(
+        "--resume",
+        metavar="QUERY",
+        help="Resume a previous session by directory name, keyword, or session UUID",
+    )
 
     args = parser.parse_args()
 
     if args.save_chat:
         session_id, prompt_dir = args.save_chat
         save_chat(session_id, prompt_dir)
+        return
+
+    if args.resume:
+        session_id, prompt_dir = find_session(args.resume, args.history_dir)
+        if session_id is None and prompt_dir is None:
+            print(f"Error: No matching session found for '{args.resume}'")
+            sys.exit(1)
+        if session_id is None:
+            print(f"Error: Found directory {prompt_dir} but no .session_id file")
+            sys.exit(1)
+        print(f"Resuming session: {session_id}")
+        print(f"Prompt directory: {prompt_dir}")
+        print()
+
+        env = os.environ.copy()
+        env.pop("CLAUDECODE", None)
+        try:
+            subprocess.run(["claude", "--dangerously-skip-permissions", "--resume", "--session-id", session_id], env=env)
+        except KeyboardInterrupt:
+            pass
+
+        # Auto-save chat history after resume session ends
+        claude_projects_dir = DEFAULT_CLAUDE_PROJECTS_DIR
+        jsonl_path = os.path.join(claude_projects_dir, f"{session_id}.jsonl")
+        if os.path.exists(jsonl_path):
+            save_chat(session_id, prompt_dir, claude_projects_dir)
         return
 
     # Handle --always-launch config setting
