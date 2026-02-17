@@ -10,6 +10,7 @@ Usage:
 import argparse
 import datetime
 import glob
+import json
 import os
 import re
 import shutil
@@ -71,6 +72,101 @@ Please write your plan using your plan skill, and save to {dirpath}.
     return filepath
 
 
+def _format_timestamp(ts: str) -> str:
+    """Format an ISO 8601 timestamp as 'YYYY-MM-DD HH:MM:SS UTC'."""
+    try:
+        dt = datetime.datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        return dt.strftime("%Y-%m-%d %H:%M:%S UTC")
+    except (ValueError, AttributeError):
+        return ts
+
+
+def _format_tool_use(block: dict) -> str:
+    """Format a tool_use block as a concise summary line."""
+    name = block.get("name", "Unknown")
+    inp = block.get("input", {})
+
+    # Pick the most relevant input key to display
+    if "file_path" in inp:
+        detail = f"`{inp['file_path']}`"
+    elif "command" in inp:
+        cmd = inp["command"]
+        detail = f"`{cmd[:80]}`" if len(cmd) > 80 else f"`{cmd}`"
+    elif "pattern" in inp:
+        detail = f"`{inp['pattern']}`"
+    elif "query" in inp:
+        detail = f"`{inp['query']}`"
+    else:
+        return f"> Used tool: **{name}**"
+
+    return f"> Used tool: **{name}**({detail})"
+
+
+def jsonl_to_markdown(jsonl_path: str) -> str:
+    """Convert a Claude Code JSONL chat history to readable Markdown.
+
+    Args:
+        jsonl_path: Path to the .jsonl file to convert.
+
+    Returns:
+        A string containing the Markdown-formatted chat history.
+    """
+    output_parts = ["# Chat History\n"]
+
+    with open(jsonl_path, "r") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+
+            entry_type = entry.get("type")
+
+            # Skip non-conversation types
+            if entry_type in ("summary", "file-history-snapshot"):
+                continue
+
+            timestamp = entry.get("timestamp", "")
+            ts_str = _format_timestamp(timestamp) if timestamp else ""
+
+            if entry_type == "user":
+                message = entry.get("message", {})
+                content = message.get("content", "")
+                if isinstance(content, str) and content:
+                    output_parts.append(f"\n## User\n*{ts_str}*\n\n{content}\n")
+
+            elif entry_type == "assistant":
+                message = entry.get("message", {})
+                content = message.get("content", [])
+                if not isinstance(content, list):
+                    continue
+
+                section_parts = [f"\n## Assistant\n*{ts_str}*\n"]
+
+                for block in content:
+                    if not isinstance(block, dict):
+                        continue
+
+                    block_type = block.get("type")
+
+                    if block_type == "text":
+                        text = block.get("text", "")
+                        if text and text != "(no content)":
+                            section_parts.append(f"\n{text}\n")
+
+                    elif block_type == "tool_use":
+                        section_parts.append(f"\n{_format_tool_use(block)}\n")
+
+                if len(section_parts) > 1:  # More than just the header
+                    output_parts.extend(section_parts)
+
+    return "\n".join(output_parts)
+
+
 def save_chat(
     session_id: str,
     prompt_dir: str,
@@ -93,6 +189,12 @@ def save_chat(
     shutil.copy2(jsonl_path, dest_path)
     size_mb = os.path.getsize(dest_path) / (1024 * 1024)
     print(f"Chat history copied to: {dest_path} ({size_mb:.1f} MB)")
+
+    md_content = jsonl_to_markdown(dest_path)
+    md_path = os.path.join(prompt_dir, "chat_history.md")
+    with open(md_path, "w") as f:
+        f.write(md_content)
+    print(f"Markdown chat history: {md_path}")
 
 
 def launch_claude(prompt_dir: str, claude_projects_dir: str = DEFAULT_CLAUDE_PROJECTS_DIR) -> str:
