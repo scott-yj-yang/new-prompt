@@ -357,14 +357,14 @@ def main():
         help="Override --always-launch for this invocation only",
     )
     parser.add_argument(
-        "--skip-permissions",
+        "--always-dangerously-skip-permissions",
         action="store_true",
         help="Set persistent config to pass --dangerously-skip-permissions to Claude Code",
     )
     parser.add_argument(
-        "--no-skip-permissions",
+        "--no-dangerously-skip-permissions",
         action="store_true",
-        help="Override --skip-permissions for this invocation only",
+        help="Override --always-dangerously-skip-permissions for this invocation only",
     )
     parser.add_argument(
         "--resume",
@@ -392,7 +392,7 @@ def main():
         print()
 
         config = load_config()
-        use_skip = args.skip_permissions or (config.get("skip_permissions", False) and not args.no_skip_permissions)
+        use_skip = args.always_dangerously_skip_permissions or (config.get("skip_permissions", False) and not args.no_dangerously_skip_permissions)
 
         cmd = ["claude"]
         if use_skip:
@@ -423,13 +423,13 @@ def main():
         if not args.keywords:
             return
 
-    # Handle --skip-permissions config setting
-    if args.skip_permissions:
+    # Handle --always-dangerously-skip-permissions config setting
+    if args.always_dangerously_skip_permissions:
         config = load_config()
         config["skip_permissions"] = True
         save_config(config)
         print("Config saved: skip_permissions = True")
-        print("Claude Code will launch with --dangerously-skip-permissions. Use --no-skip-permissions to skip.")
+        print("Claude Code will launch with --dangerously-skip-permissions. Use --no-dangerously-skip-permissions to skip.")
         if not args.keywords:
             return
 
@@ -454,7 +454,7 @@ def main():
     # Determine whether to launch
     config = load_config()
     should_launch = args.launch or (config.get("always_launch", False) and not args.no_launch)
-    use_skip = args.skip_permissions or (config.get("skip_permissions", False) and not args.no_skip_permissions)
+    use_skip = args.always_dangerously_skip_permissions or (config.get("skip_permissions", False) and not args.no_dangerously_skip_permissions)
 
     if should_launch:
         print()
