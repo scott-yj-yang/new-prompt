@@ -42,6 +42,7 @@ def test_write_prompt_md():
         content = open(filepath).read()
         assert "Please write your plan" in content
         assert tmpdir in content
+        assert "plan.md" in content
         # Should have blank lines at the top
         assert content.startswith("\n")
 

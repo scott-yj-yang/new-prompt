@@ -86,7 +86,7 @@ def write_prompt_md(dirpath: str) -> str:
 
 
 
-Please write your plan using your plan skill, and save to {dirpath}.
+Please write your plan using your plan skill, and save to {dirpath}/plan.md.
 """
     with open(filepath, "w") as f:
         f.write(content)
