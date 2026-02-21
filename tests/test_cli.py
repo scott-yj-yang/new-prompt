@@ -10,16 +10,16 @@ from newprompt.cli import get_next_seq, create_prompt_dir, write_prompt_md, json
 def test_get_next_seq_empty_dir():
     """First prompt of the day should get sequence 1."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        seq = get_next_seq("2-16-26", history_dir=tmpdir)
+        seq = get_next_seq("2026-02-16", history_dir=tmpdir)
         assert seq == 1
 
 
 def test_get_next_seq_existing():
     """Should return max existing seq + 1."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        os.makedirs(os.path.join(tmpdir, "2-16-26-1-foo"))
-        os.makedirs(os.path.join(tmpdir, "2-16-26-3-bar"))
-        seq = get_next_seq("2-16-26", history_dir=tmpdir)
+        os.makedirs(os.path.join(tmpdir, "2026-02-16-1-foo"))
+        os.makedirs(os.path.join(tmpdir, "2026-02-16-3-bar"))
+        seq = get_next_seq("2026-02-16", history_dir=tmpdir)
         assert seq == 4
 
 
@@ -177,11 +177,11 @@ def test_skip_permissions_toggle_off(tmp_path):
 def test_find_session_by_directory_name(tmp_path):
     """Should find session ID from a prompt directory's .session_id file."""
     history_dir = tmp_path / "history"
-    prompt_dir = history_dir / "2-17-26-1-my-feature"
+    prompt_dir = history_dir / "2026-02-17-1-my-feature"
     prompt_dir.mkdir(parents=True)
     (prompt_dir / ".session_id").write_text("abc-123-def")
 
-    session_id, dirpath = find_session("2-17-26-1-my-feature", str(history_dir))
+    session_id, dirpath = find_session("2026-02-17-1-my-feature", str(history_dir))
     assert session_id == "abc-123-def"
     assert dirpath == str(prompt_dir)
 
@@ -189,7 +189,7 @@ def test_find_session_by_directory_name(tmp_path):
 def test_find_session_by_partial_match(tmp_path):
     """Should find session by partial keyword match."""
     history_dir = tmp_path / "history"
-    prompt_dir = history_dir / "2-17-26-1-my-feature"
+    prompt_dir = history_dir / "2026-02-17-1-my-feature"
     prompt_dir.mkdir(parents=True)
     (prompt_dir / ".session_id").write_text("abc-123-def")
 
@@ -201,7 +201,7 @@ def test_find_session_by_partial_match(tmp_path):
 def test_find_session_by_uuid(tmp_path):
     """Should find session when given a raw UUID (searches all .session_id files)."""
     history_dir = tmp_path / "history"
-    prompt_dir = history_dir / "2-17-26-1-my-feature"
+    prompt_dir = history_dir / "2026-02-17-1-my-feature"
     prompt_dir.mkdir(parents=True)
     (prompt_dir / ".session_id").write_text("abc-123-def")
 
