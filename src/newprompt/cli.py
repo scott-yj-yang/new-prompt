@@ -66,7 +66,7 @@ def create_prompt_dir(
 ) -> str:
     """Create the prompt directory and return its path."""
     now = datetime.datetime.now()
-    date_prefix = f"{now.month}-{now.day:02d}-{now.year % 100}"
+    date_prefix = f"{now.year}-{now.month:02d}-{now.day:02d}"
 
     seq = seq_override if seq_override is not None else get_next_seq(date_prefix, history_dir)
 
