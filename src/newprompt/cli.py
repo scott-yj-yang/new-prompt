@@ -93,6 +93,39 @@ Please write your plan using your plan skill, and save to {dirpath}/plan.md.
     return filepath
 
 
+def write_indexed_prompt_md(dirpath: str, index: int, prompt_text: str = "") -> str:
+    """Write an indexed prompt file (prompt1.md, prompt2.md, etc.).
+
+    Args:
+        dirpath: The session directory path.
+        index: The prompt index (1, 2, 3, ...).
+        prompt_text: Optional prompt text to include in the file.
+
+    Returns:
+        Path to the created file.
+    """
+    filepath = os.path.join(dirpath, f"prompt{index}.md")
+    plan_name = f"plan{index}.md"
+
+    if prompt_text:
+        content = f"""\
+{prompt_text}
+
+Please write your plan using your plan skill, and save to {dirpath}/{plan_name}.
+"""
+    else:
+        content = f"""\
+
+
+
+
+Please write your plan using your plan skill, and save to {dirpath}/{plan_name}.
+"""
+    with open(filepath, "w") as f:
+        f.write(content)
+    return filepath
+
+
 def _format_timestamp(ts: str) -> str:
     """Format an ISO 8601 timestamp as 'YYYY-MM-DD HH:MM:SS UTC'."""
     try:

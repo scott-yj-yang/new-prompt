@@ -4,7 +4,7 @@ import json
 import os
 import tempfile
 import datetime
-from newprompt.cli import get_next_seq, create_prompt_dir, write_prompt_md, jsonl_to_markdown, save_chat, load_config, save_config, CONFIG_DEFAULTS, find_session
+from newprompt.cli import get_next_seq, create_prompt_dir, write_prompt_md, write_indexed_prompt_md, jsonl_to_markdown, save_chat, load_config, save_config, CONFIG_DEFAULTS, find_session
 
 
 def test_get_next_seq_empty_dir():
@@ -219,3 +219,33 @@ def test_find_session_not_found(tmp_path):
     session_id, dirpath = find_session("nonexistent", str(history_dir))
     assert session_id is None
     assert dirpath is None
+
+
+def test_write_indexed_prompt_md_index_1():
+    """prompt1.md should reference plan1.md in footer."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        filepath = write_indexed_prompt_md(tmpdir, 1)
+        assert os.path.exists(filepath)
+        assert filepath.endswith("prompt1.md")
+        content = open(filepath).read()
+        assert "plan1.md" in content
+        assert "Please write your plan" in content
+        assert content.startswith("\n")
+
+
+def test_write_indexed_prompt_md_index_3():
+    """prompt3.md should reference plan3.md."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        filepath = write_indexed_prompt_md(tmpdir, 3)
+        assert filepath.endswith("prompt3.md")
+        content = open(filepath).read()
+        assert "plan3.md" in content
+
+
+def test_write_indexed_prompt_md_with_text():
+    """Should include user-provided prompt text."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        filepath = write_indexed_prompt_md(tmpdir, 1, prompt_text="Fix the login bug")
+        content = open(filepath).read()
+        assert "Fix the login bug" in content
+        assert "plan1.md" in content
