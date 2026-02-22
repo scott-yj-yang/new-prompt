@@ -271,3 +271,31 @@ def test_get_next_prompt_index_no_prompts():
     """Should return 1 when directory has no prompt files."""
     with tempfile.TemporaryDirectory() as tmpdir:
         assert get_next_prompt_index(tmpdir) == 1
+
+
+def test_write_current_session_marker(tmp_path):
+    """Should write .current_session with the session directory path."""
+    from newprompt.cli import write_current_session_marker, read_current_session_marker
+    config_dir = str(tmp_path / "config")
+    session_dir = str(tmp_path / "session")
+    os.makedirs(session_dir, exist_ok=True)
+
+    write_current_session_marker(session_dir, config_dir=config_dir)
+    result = read_current_session_marker(config_dir=config_dir)
+    assert result == session_dir
+
+
+def test_read_current_session_marker_no_file(tmp_path):
+    """Should return None when no marker exists."""
+    from newprompt.cli import read_current_session_marker
+    result = read_current_session_marker(config_dir=str(tmp_path))
+    assert result is None
+
+
+def test_read_current_session_marker_stale(tmp_path):
+    """Should return None when marker points to nonexistent directory."""
+    from newprompt.cli import write_current_session_marker, read_current_session_marker
+    config_dir = str(tmp_path / "config")
+    write_current_session_marker("/nonexistent/dir", config_dir=config_dir)
+    result = read_current_session_marker(config_dir=config_dir)
+    assert result is None

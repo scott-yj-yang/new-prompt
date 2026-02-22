@@ -17,6 +17,7 @@ from newprompt.cli import (
     DEFAULT_HISTORY_DIR,
     create_prompt_dir,
     get_next_prompt_index,
+    read_current_session_marker,
     write_indexed_prompt_md,
     write_prompt_md,
 )
@@ -38,9 +39,15 @@ _active_session_dir: str | None = None
 def _find_latest_session_dir(history_dir: str = DEFAULT_HISTORY_DIR) -> str | None:
     """Find the most recent session directory in the history folder.
 
-    Directories are sorted lexicographically (YYYY-MM-DD-SEQ-slug),
-    so the last one is the most recent.
+    Checks the session marker file first (set by ``newprompt --launch``),
+    then falls back to scanning directories sorted lexicographically
+    (YYYY-MM-DD-SEQ-slug), where the last one is the most recent.
     """
+    # Check session marker first (set by newprompt --launch)
+    marker = read_current_session_marker()
+    if marker:
+        return marker
+
     if not os.path.isdir(history_dir):
         return None
 

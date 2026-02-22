@@ -45,6 +45,29 @@ def save_config(config: dict, config_path: str = DEFAULT_CONFIG_PATH) -> None:
         f.write("\n")
 
 
+def write_current_session_marker(
+    session_dir: str,
+    config_dir: str = os.path.dirname(DEFAULT_CONFIG_PATH),
+) -> None:
+    """Write the current active session directory to a marker file."""
+    os.makedirs(config_dir, exist_ok=True)
+    marker = os.path.join(config_dir, ".current_session")
+    with open(marker, "w") as f:
+        f.write(session_dir)
+
+
+def read_current_session_marker(
+    config_dir: str = os.path.dirname(DEFAULT_CONFIG_PATH),
+) -> str | None:
+    """Read the current active session directory from the marker file."""
+    marker = os.path.join(config_dir, ".current_session")
+    if not os.path.exists(marker):
+        return None
+    with open(marker) as f:
+        path = f.read().strip()
+    return path if os.path.isdir(path) else None
+
+
 def get_next_seq(date_prefix: str, history_dir: str = DEFAULT_HISTORY_DIR) -> int:
     """Find the next sequence number for a given date prefix."""
     pattern = os.path.join(history_dir, f"{date_prefix}-*")
@@ -277,6 +300,8 @@ def launch_claude(prompt_dir: str, claude_projects_dir: str = DEFAULT_CLAUDE_PRO
     meta_path = os.path.join(prompt_dir, ".session_id")
     with open(meta_path, "w") as f:
         f.write(session_id)
+
+    write_current_session_marker(prompt_dir)
 
     print(f"Launching Claude Code with session ID: {session_id}")
     print(f"Prompt directory: {prompt_dir}")
