@@ -126,6 +126,24 @@ Please write your plan using your plan skill, and save to {dirpath}/{plan_name}.
     return filepath
 
 
+def get_next_prompt_index(dirpath: str) -> int:
+    """Find the next prompt index for a session directory.
+
+    Scans for prompt.md, prompt1.md, prompt2.md, etc. and returns
+    the next available index.
+
+    Returns:
+        The next index (1 if no indexed prompts exist yet).
+    """
+    max_index = 0
+    for name in os.listdir(dirpath):
+        match = re.match(r"^prompt(\d+)\.md$", name)
+        if match:
+            idx = int(match.group(1))
+            max_index = max(max_index, idx)
+    return max_index + 1
+
+
 def _format_timestamp(ts: str) -> str:
     """Format an ISO 8601 timestamp as 'YYYY-MM-DD HH:MM:SS UTC'."""
     try:

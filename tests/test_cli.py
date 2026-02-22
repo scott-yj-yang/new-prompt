@@ -4,7 +4,7 @@ import json
 import os
 import tempfile
 import datetime
-from newprompt.cli import get_next_seq, create_prompt_dir, write_prompt_md, write_indexed_prompt_md, jsonl_to_markdown, save_chat, load_config, save_config, CONFIG_DEFAULTS, find_session
+from newprompt.cli import get_next_seq, create_prompt_dir, write_prompt_md, write_indexed_prompt_md, get_next_prompt_index, jsonl_to_markdown, save_chat, load_config, save_config, CONFIG_DEFAULTS, find_session
 
 
 def test_get_next_seq_empty_dir():
@@ -249,3 +249,25 @@ def test_write_indexed_prompt_md_with_text():
         content = open(filepath).read()
         assert "Fix the login bug" in content
         assert "plan1.md" in content
+
+
+def test_get_next_prompt_index_empty():
+    """Should return 1 when only prompt.md exists."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        open(os.path.join(tmpdir, "prompt.md"), "w").close()
+        assert get_next_prompt_index(tmpdir) == 1
+
+
+def test_get_next_prompt_index_with_existing():
+    """Should return max + 1 when indexed prompts exist."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        open(os.path.join(tmpdir, "prompt.md"), "w").close()
+        open(os.path.join(tmpdir, "prompt1.md"), "w").close()
+        open(os.path.join(tmpdir, "prompt2.md"), "w").close()
+        assert get_next_prompt_index(tmpdir) == 3
+
+
+def test_get_next_prompt_index_no_prompts():
+    """Should return 1 when directory has no prompt files."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        assert get_next_prompt_index(tmpdir) == 1
