@@ -304,7 +304,7 @@ def test_read_current_session_marker_stale(tmp_path):
 def test_get_default_history_dir_env_var(tmp_path, monkeypatch):
     """NEWPROMPT_HISTORY_DIR env var should take priority."""
     monkeypatch.setenv("NEWPROMPT_HISTORY_DIR", str(tmp_path / "from-env"))
-    result = get_default_history_dir()
+    result = get_default_history_dir(config_path=str(tmp_path / "nonexistent.json"))
     assert result == str(tmp_path / "from-env")
 
 

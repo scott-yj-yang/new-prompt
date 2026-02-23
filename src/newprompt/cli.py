@@ -49,14 +49,14 @@ def get_default_history_dir(config_path: str = DEFAULT_CONFIG_PATH) -> str:
     2. history_dir key in the config file
     3. {cwd}/ClaudeCode_PromptHistory
     """
-    env_val = os.environ.get("NEWPROMPT_HISTORY_DIR")
+    env_val = os.environ.get("NEWPROMPT_HISTORY_DIR", "").strip()
     if env_val:
-        return env_val
+        return os.path.expanduser(env_val)
 
     config = load_config(config_path)
-    config_val = config.get("history_dir")
+    config_val = config.get("history_dir", "").strip()
     if config_val:
-        return config_val
+        return os.path.expanduser(config_val)
 
     return os.path.join(os.getcwd(), "ClaudeCode_PromptHistory")
 
@@ -65,7 +65,8 @@ def get_claude_projects_dir() -> str:
     """Compute the Claude projects directory from the current working directory.
 
     Returns ~/.claude/projects/{slug} where slug is the cwd with
-    path separators replaced by dashes.
+    path separators replaced by dashes.  This replicates Claude Code's
+    internal slug algorithm (e.g. /home/user/project -> -home-user-project).
     """
     slug = os.getcwd().replace(os.sep, "-")
     return os.path.expanduser(f"~/.claude/projects/{slug}")
