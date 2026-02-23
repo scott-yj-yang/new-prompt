@@ -2,6 +2,7 @@
 
 import os
 import tempfile
+from unittest.mock import patch
 import pytest
 from newprompt.mcp_server import (
     _find_latest_session_dir,
@@ -11,7 +12,8 @@ from newprompt.mcp_server import (
 )
 
 
-def test_find_latest_session_dir(tmp_path):
+@patch("newprompt.mcp_server.read_current_session_marker", return_value=None)
+def test_find_latest_session_dir(_mock_marker, tmp_path):
     """Should find the most recently created session directory."""
     dir1 = tmp_path / "2026-02-22-1-foo"
     dir1.mkdir()
@@ -25,13 +27,15 @@ def test_find_latest_session_dir(tmp_path):
     assert result == str(dir2)
 
 
-def test_find_latest_session_dir_empty(tmp_path):
+@patch("newprompt.mcp_server.read_current_session_marker", return_value=None)
+def test_find_latest_session_dir_empty(_mock_marker, tmp_path):
     """Should return None when no session dirs exist."""
     result = _find_latest_session_dir(str(tmp_path))
     assert result is None
 
 
-def test_find_latest_session_dir_skips_underscore(tmp_path):
+@patch("newprompt.mcp_server.read_current_session_marker", return_value=None)
+def test_find_latest_session_dir_skips_underscore(_mock_marker, tmp_path):
     """Should skip directories starting with underscore."""
     archive = tmp_path / "_archive"
     archive.mkdir()

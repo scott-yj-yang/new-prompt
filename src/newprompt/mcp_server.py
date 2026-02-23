@@ -14,7 +14,7 @@ import sys
 from mcp.server.fastmcp import FastMCP
 
 from newprompt.cli import (
-    DEFAULT_HISTORY_DIR,
+    get_default_history_dir,
     create_prompt_dir,
     get_next_prompt_index,
     read_current_session_marker,
@@ -36,7 +36,7 @@ _active_session_dir: str | None = None
 # Pure-logic helpers (testable without MCP framework)
 # ---------------------------------------------------------------------------
 
-def _find_latest_session_dir(history_dir: str = DEFAULT_HISTORY_DIR) -> str | None:
+def _find_latest_session_dir(history_dir: str | None = None) -> str | None:
     """Find the most recent session directory in the history folder.
 
     Checks the session marker file first (set by ``newprompt --launch``),
@@ -47,6 +47,9 @@ def _find_latest_session_dir(history_dir: str = DEFAULT_HISTORY_DIR) -> str | No
     marker = read_current_session_marker()
     if marker:
         return marker
+
+    if history_dir is None:
+        history_dir = get_default_history_dir()
 
     if not os.path.isdir(history_dir):
         return None
@@ -67,9 +70,11 @@ def _find_latest_session_dir(history_dir: str = DEFAULT_HISTORY_DIR) -> str | No
 
 def _init_session_logic(
     keywords: str,
-    history_dir: str = DEFAULT_HISTORY_DIR,
+    history_dir: str | None = None,
 ) -> dict:
     """Create a new session directory and initial prompt.md."""
+    if history_dir is None:
+        history_dir = get_default_history_dir()
     keyword_list = keywords.strip().split()
     if not keyword_list:
         return {"error": "At least one keyword is required."}
