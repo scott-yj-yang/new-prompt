@@ -18,10 +18,6 @@ import subprocess
 import sys
 import uuid
 
-DEFAULT_HISTORY_DIR = "/home/talmolab/Desktop/SalkResearch/ClaudeCode_PromptHistory"
-DEFAULT_CLAUDE_PROJECTS_DIR = os.path.expanduser(
-    "~/.claude/projects/-home-talmolab-Desktop-SalkResearch"
-)
 DEFAULT_CONFIG_PATH = os.path.expanduser("~/.config/newprompt/config.json")
 CONFIG_DEFAULTS = {"always_launch": False, "skip_permissions": False}
 
@@ -43,6 +39,36 @@ def save_config(config: dict, config_path: str = DEFAULT_CONFIG_PATH) -> None:
     with open(config_path, "w") as f:
         json.dump(config, f, indent=2)
         f.write("\n")
+
+
+def get_default_history_dir(config_path: str = DEFAULT_CONFIG_PATH) -> str:
+    """Resolve the prompt history directory.
+
+    Priority:
+    1. NEWPROMPT_HISTORY_DIR environment variable
+    2. history_dir key in the config file
+    3. {cwd}/ClaudeCode_PromptHistory
+    """
+    env_val = os.environ.get("NEWPROMPT_HISTORY_DIR")
+    if env_val:
+        return env_val
+
+    config = load_config(config_path)
+    config_val = config.get("history_dir")
+    if config_val:
+        return config_val
+
+    return os.path.join(os.getcwd(), "ClaudeCode_PromptHistory")
+
+
+def get_claude_projects_dir() -> str:
+    """Compute the Claude projects directory from the current working directory.
+
+    Returns ~/.claude/projects/{slug} where slug is the cwd with
+    path separators replaced by dashes.
+    """
+    slug = os.getcwd().replace(os.sep, "-")
+    return os.path.expanduser(f"~/.claude/projects/{slug}")
 
 
 def write_current_session_marker(
@@ -68,8 +94,10 @@ def read_current_session_marker(
     return path if os.path.isdir(path) else None
 
 
-def get_next_seq(date_prefix: str, history_dir: str = DEFAULT_HISTORY_DIR) -> int:
+def get_next_seq(date_prefix: str, history_dir: str | None = None) -> int:
     """Find the next sequence number for a given date prefix."""
+    if history_dir is None:
+        history_dir = get_default_history_dir()
     pattern = os.path.join(history_dir, f"{date_prefix}-*")
     existing = glob.glob(pattern)
     max_seq = 0
@@ -84,10 +112,12 @@ def get_next_seq(date_prefix: str, history_dir: str = DEFAULT_HISTORY_DIR) -> in
 
 def create_prompt_dir(
     keywords: list[str],
-    history_dir: str = DEFAULT_HISTORY_DIR,
+    history_dir: str | None = None,
     seq_override: int | None = None,
 ) -> str:
     """Create the prompt directory and return its path."""
+    if history_dir is None:
+        history_dir = get_default_history_dir()
     now = datetime.datetime.now()
     date_prefix = f"{now.year}-{now.month:02d}-{now.day:02d}"
 
@@ -265,13 +295,15 @@ def jsonl_to_markdown(jsonl_path: str) -> str:
 def save_chat(
     session_id: str,
     prompt_dir: str,
-    claude_projects_dir: str = DEFAULT_CLAUDE_PROJECTS_DIR,
+    claude_projects_dir: str | None = None,
 ) -> None:
     """Copy the chat history JSONL into the prompt directory.
 
     Uses a direct file copy (not symlink) so the history is preserved
     even if Claude Code cleans up its internal history files.
     """
+    if claude_projects_dir is None:
+        claude_projects_dir = get_claude_projects_dir()
     jsonl_path = os.path.join(claude_projects_dir, f"{session_id}.jsonl")
     if not os.path.exists(jsonl_path):
         print(f"Error: Chat history not found at {jsonl_path}")
@@ -292,8 +324,10 @@ def save_chat(
     print(f"Markdown chat history: {md_path}")
 
 
-def launch_claude(prompt_dir: str, claude_projects_dir: str = DEFAULT_CLAUDE_PROJECTS_DIR, skip_permissions: bool = False) -> str:
+def launch_claude(prompt_dir: str, claude_projects_dir: str | None = None, skip_permissions: bool = False) -> str:
     """Launch Claude Code with a known session ID. Returns the session ID."""
+    if claude_projects_dir is None:
+        claude_projects_dir = get_claude_projects_dir()
     session_id = str(uuid.uuid4())
 
     # Write session ID to the prompt dir for later reference
@@ -333,7 +367,7 @@ def launch_claude(prompt_dir: str, claude_projects_dir: str = DEFAULT_CLAUDE_PRO
 
 def find_session(
     query: str,
-    history_dir: str = DEFAULT_HISTORY_DIR,
+    history_dir: str | None = None,
 ) -> tuple[str | None, str | None]:
     """Find a session ID and prompt directory by query string.
 
@@ -344,6 +378,8 @@ def find_session(
 
     Returns (session_id, dirpath) or (None, None) if not found.
     """
+    if history_dir is None:
+        history_dir = get_default_history_dir()
     if not os.path.isdir(history_dir):
         return None, None
 
@@ -414,8 +450,8 @@ def main():
     )
     parser.add_argument(
         "--history-dir",
-        default=DEFAULT_HISTORY_DIR,
-        help=f"Base directory for prompt history (default: {DEFAULT_HISTORY_DIR})",
+        default=None,
+        help="Base directory for prompt history (default: $NEWPROMPT_HISTORY_DIR or {cwd}/ClaudeCode_PromptHistory)",
     )
     parser.add_argument(
         "--dry-run",
@@ -450,6 +486,9 @@ def main():
     )
 
     args = parser.parse_args()
+
+    if args.history_dir is None:
+        args.history_dir = get_default_history_dir()
 
     if args.save_chat:
         session_id, prompt_dir = args.save_chat
@@ -487,7 +526,7 @@ def main():
             pass
 
         # Auto-save chat history after resume session ends
-        claude_projects_dir = DEFAULT_CLAUDE_PROJECTS_DIR
+        claude_projects_dir = get_claude_projects_dir()
         jsonl_path = os.path.join(claude_projects_dir, f"{session_id}.jsonl")
         if os.path.exists(jsonl_path):
             save_chat(session_id, prompt_dir, claude_projects_dir)

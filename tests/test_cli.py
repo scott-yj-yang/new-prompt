@@ -4,7 +4,7 @@ import json
 import os
 import tempfile
 import datetime
-from newprompt.cli import get_next_seq, create_prompt_dir, write_prompt_md, write_indexed_prompt_md, get_next_prompt_index, jsonl_to_markdown, save_chat, load_config, save_config, CONFIG_DEFAULTS, find_session
+from newprompt.cli import get_next_seq, create_prompt_dir, write_prompt_md, write_indexed_prompt_md, get_next_prompt_index, jsonl_to_markdown, save_chat, load_config, save_config, CONFIG_DEFAULTS, find_session, get_default_history_dir, get_claude_projects_dir
 
 
 def test_get_next_seq_empty_dir():
@@ -299,3 +299,35 @@ def test_read_current_session_marker_stale(tmp_path):
     write_current_session_marker("/nonexistent/dir", config_dir=config_dir)
     result = read_current_session_marker(config_dir=config_dir)
     assert result is None
+
+
+def test_get_default_history_dir_env_var(tmp_path, monkeypatch):
+    """NEWPROMPT_HISTORY_DIR env var should take priority."""
+    monkeypatch.setenv("NEWPROMPT_HISTORY_DIR", str(tmp_path / "from-env"))
+    result = get_default_history_dir()
+    assert result == str(tmp_path / "from-env")
+
+
+def test_get_default_history_dir_config(tmp_path, monkeypatch):
+    """Config file history_dir should be used when no env var is set."""
+    monkeypatch.delenv("NEWPROMPT_HISTORY_DIR", raising=False)
+    config_path = str(tmp_path / "config.json")
+    save_config({"history_dir": str(tmp_path / "from-config")}, config_path=config_path)
+    result = get_default_history_dir(config_path=config_path)
+    assert result == str(tmp_path / "from-config")
+
+
+def test_get_default_history_dir_cwd_fallback(tmp_path, monkeypatch):
+    """Should fall back to {cwd}/ClaudeCode_PromptHistory."""
+    monkeypatch.delenv("NEWPROMPT_HISTORY_DIR", raising=False)
+    monkeypatch.chdir(tmp_path)
+    result = get_default_history_dir(config_path=str(tmp_path / "nonexistent.json"))
+    assert result == str(tmp_path / "ClaudeCode_PromptHistory")
+
+
+def test_get_claude_projects_dir(monkeypatch, tmp_path):
+    """Should compute slug from cwd."""
+    monkeypatch.chdir(tmp_path)
+    result = get_claude_projects_dir()
+    expected_slug = str(tmp_path).replace(os.sep, "-")
+    assert result == os.path.expanduser(f"~/.claude/projects/{expected_slug}")
