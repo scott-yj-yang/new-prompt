@@ -4,7 +4,21 @@ import json
 import os
 import tempfile
 import datetime
-from newprompt.cli import get_next_seq, create_prompt_dir, write_prompt_md, write_indexed_prompt_md, get_next_prompt_index, jsonl_to_markdown, save_chat, load_config, save_config, CONFIG_DEFAULTS, find_session, get_default_history_dir, get_claude_projects_dir
+from newprompt.cli import (
+    get_next_seq,
+    create_prompt_dir,
+    write_prompt_md,
+    write_indexed_prompt_md,
+    get_next_prompt_index,
+    jsonl_to_markdown,
+    save_chat,
+    load_config,
+    save_config,
+    CONFIG_DEFAULTS,
+    find_session,
+    get_default_history_dir,
+    get_claude_projects_dir,
+)
 
 
 def test_get_next_seq_empty_dir():
@@ -50,8 +64,24 @@ def test_write_prompt_md():
 def test_jsonl_to_markdown_basic():
     """Should convert user and assistant messages to readable markdown."""
     lines = [
-        json.dumps({"type": "user", "message": {"content": "Hello, how are you?"}, "timestamp": "2026-02-17T10:00:00.000Z"}),
-        json.dumps({"type": "assistant", "message": {"content": [{"type": "text", "text": "I'm doing well! How can I help?"}]}, "timestamp": "2026-02-17T10:00:05.000Z"}),
+        json.dumps(
+            {
+                "type": "user",
+                "message": {"content": "Hello, how are you?"},
+                "timestamp": "2026-02-17T10:00:00.000Z",
+            }
+        ),
+        json.dumps(
+            {
+                "type": "assistant",
+                "message": {
+                    "content": [
+                        {"type": "text", "text": "I'm doing well! How can I help?"}
+                    ]
+                },
+                "timestamp": "2026-02-17T10:00:05.000Z",
+            }
+        ),
     ]
     with tempfile.TemporaryDirectory() as tmpdir:
         jsonl_path = os.path.join(tmpdir, "chat.jsonl")
@@ -69,7 +99,13 @@ def test_jsonl_to_markdown_skips_non_conversation():
     lines = [
         json.dumps({"type": "summary", "summary": "Test summary"}),
         json.dumps({"type": "file-history-snapshot", "snapshot": {}}),
-        json.dumps({"type": "user", "message": {"content": "Hi"}, "timestamp": "2026-02-17T10:00:00.000Z"}),
+        json.dumps(
+            {
+                "type": "user",
+                "message": {"content": "Hi"},
+                "timestamp": "2026-02-17T10:00:00.000Z",
+            }
+        ),
     ]
     with tempfile.TemporaryDirectory() as tmpdir:
         jsonl_path = os.path.join(tmpdir, "chat.jsonl")
@@ -83,14 +119,22 @@ def test_jsonl_to_markdown_skips_non_conversation():
 def test_jsonl_to_markdown_tool_use():
     """Should show tool use as a summary line, not raw JSON."""
     lines = [
-        json.dumps({
-            "type": "assistant",
-            "message": {"content": [
-                {"type": "text", "text": "Let me read that file."},
-                {"type": "tool_use", "name": "Read", "input": {"file_path": "/tmp/foo.py"}},
-            ]},
-            "timestamp": "2026-02-17T10:00:00.000Z",
-        }),
+        json.dumps(
+            {
+                "type": "assistant",
+                "message": {
+                    "content": [
+                        {"type": "text", "text": "Let me read that file."},
+                        {
+                            "type": "tool_use",
+                            "name": "Read",
+                            "input": {"file_path": "/tmp/foo.py"},
+                        },
+                    ]
+                },
+                "timestamp": "2026-02-17T10:00:00.000Z",
+            }
+        ),
     ]
     with tempfile.TemporaryDirectory() as tmpdir:
         jsonl_path = os.path.join(tmpdir, "chat.jsonl")
@@ -109,8 +153,20 @@ def test_save_chat_creates_markdown(tmp_path):
     session_id = "test-session-123"
     jsonl_file = projects_dir / f"{session_id}.jsonl"
     lines = [
-        json.dumps({"type": "user", "message": {"content": "Hello"}, "timestamp": "2026-02-17T10:00:00.000Z"}),
-        json.dumps({"type": "assistant", "message": {"content": [{"type": "text", "text": "Hi there!"}]}, "timestamp": "2026-02-17T10:00:01.000Z"}),
+        json.dumps(
+            {
+                "type": "user",
+                "message": {"content": "Hello"},
+                "timestamp": "2026-02-17T10:00:00.000Z",
+            }
+        ),
+        json.dumps(
+            {
+                "type": "assistant",
+                "message": {"content": [{"type": "text", "text": "Hi there!"}]},
+                "timestamp": "2026-02-17T10:00:01.000Z",
+            }
+        ),
     ]
     jsonl_file.write_text("\n".join(lines) + "\n")
     prompt_dir = tmp_path / "prompt"
@@ -276,6 +332,7 @@ def test_get_next_prompt_index_no_prompts():
 def test_write_current_session_marker(tmp_path):
     """Should write .current_session with the session directory path."""
     from newprompt.cli import write_current_session_marker, read_current_session_marker
+
     config_dir = str(tmp_path / "config")
     session_dir = str(tmp_path / "session")
     os.makedirs(session_dir, exist_ok=True)
@@ -288,6 +345,7 @@ def test_write_current_session_marker(tmp_path):
 def test_read_current_session_marker_no_file(tmp_path):
     """Should return None when no marker exists."""
     from newprompt.cli import read_current_session_marker
+
     result = read_current_session_marker(config_dir=str(tmp_path))
     assert result is None
 
@@ -295,6 +353,7 @@ def test_read_current_session_marker_no_file(tmp_path):
 def test_read_current_session_marker_stale(tmp_path):
     """Should return None when marker points to nonexistent directory."""
     from newprompt.cli import write_current_session_marker, read_current_session_marker
+
     config_dir = str(tmp_path / "config")
     write_current_session_marker("/nonexistent/dir", config_dir=config_dir)
     result = read_current_session_marker(config_dir=config_dir)

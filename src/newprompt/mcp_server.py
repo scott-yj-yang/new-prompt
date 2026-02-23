@@ -36,6 +36,7 @@ _active_session_dir: str | None = None
 # Pure-logic helpers (testable without MCP framework)
 # ---------------------------------------------------------------------------
 
+
 def _find_latest_session_dir(history_dir: str | None = None) -> str | None:
     """Find the most recent session directory in the history folder.
 
@@ -118,9 +119,7 @@ def _get_session_info_logic(session_dir: str) -> dict:
     prompts = sorted(
         f for f in os.listdir(session_dir) if re.match(r"^prompt\d*\.md$", f)
     )
-    plans = sorted(
-        f for f in os.listdir(session_dir) if re.match(r"^plan\d*\.md$", f)
-    )
+    plans = sorted(f for f in os.listdir(session_dir) if re.match(r"^plan\d*\.md$", f))
 
     return {
         "session_dir": session_dir,
@@ -136,6 +135,7 @@ def _get_session_info_logic(session_dir: str) -> dict:
 # ---------------------------------------------------------------------------
 # MCP tool definitions
 # ---------------------------------------------------------------------------
+
 
 @mcp.tool()
 def init_session(keywords: str) -> str:

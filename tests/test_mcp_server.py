@@ -68,9 +68,7 @@ def test_continue_session_logic(tmp_path):
     session_dir.mkdir()
     (session_dir / "prompt.md").write_text("original prompt")
 
-    result = _continue_session_logic(
-        str(session_dir), "Fix the login bug"
-    )
+    result = _continue_session_logic(str(session_dir), "Fix the login bug")
     assert result["prompt_index"] == 1
     assert result["prompt_file"].endswith("prompt1.md")
     assert result["plan_file"].endswith("plan1.md")

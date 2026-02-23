@@ -122,7 +122,11 @@ def create_prompt_dir(
     now = datetime.datetime.now()
     date_prefix = f"{now.year}-{now.month:02d}-{now.day:02d}"
 
-    seq = seq_override if seq_override is not None else get_next_seq(date_prefix, history_dir)
+    seq = (
+        seq_override
+        if seq_override is not None
+        else get_next_seq(date_prefix, history_dir)
+    )
 
     keyword_slug = "-".join(k.lower().replace(" ", "-") for k in keywords)
     dirname = f"{date_prefix}-{seq}-{keyword_slug}"
@@ -140,7 +144,7 @@ def write_prompt_md(dirpath: str) -> str:
 
 
 
-Please write your plan using your plan skill, and save to {dirpath}/plan.md.
+Please write your plan using your plan skill 'writing-plans' from superpower, and save to {dirpath}/plan.md.
 """
     with open(filepath, "w") as f:
         f.write(content)
@@ -165,7 +169,7 @@ def write_indexed_prompt_md(dirpath: str, index: int, prompt_text: str = "") -> 
         content = f"""\
 {prompt_text}
 
-Please write your plan using your plan skill, and save to {dirpath}/{plan_name}.
+Please write your plan using your plan skill 'writing-plans' from superpower, and save to {dirpath}/{plan_name}.
 """
     else:
         content = f"""\
@@ -173,7 +177,7 @@ Please write your plan using your plan skill, and save to {dirpath}/{plan_name}.
 
 
 
-Please write your plan using your plan skill, and save to {dirpath}/{plan_name}.
+Please write your plan using your plan skill 'writing-plans' from superpower, and save to {dirpath}/{plan_name}.
 """
     with open(filepath, "w") as f:
         f.write(content)
@@ -325,7 +329,11 @@ def save_chat(
     print(f"Markdown chat history: {md_path}")
 
 
-def launch_claude(prompt_dir: str, claude_projects_dir: str | None = None, skip_permissions: bool = False) -> str:
+def launch_claude(
+    prompt_dir: str,
+    claude_projects_dir: str | None = None,
+    skip_permissions: bool = False,
+) -> str:
     """Launch Claude Code with a known session ID. Returns the session ID."""
     if claude_projects_dir is None:
         claude_projects_dir = get_claude_projects_dir()
@@ -440,7 +448,9 @@ def main():
         help="Launch Claude Code after creating the directory",
     )
     parser.add_argument(
-        "--seq", type=int, default=None,
+        "--seq",
+        type=int,
+        default=None,
         help="Override the auto-detected sequence number",
     )
     parser.add_argument(
@@ -512,7 +522,9 @@ def main():
         if args.no_dangerously_skip_permissions:
             use_skip = False
         else:
-            use_skip = args.always_dangerously_skip_permissions or config.get("skip_permissions", False)
+            use_skip = args.always_dangerously_skip_permissions or config.get(
+                "skip_permissions", False
+            )
 
         cmd = ["claude"]
         if use_skip:
@@ -581,11 +593,15 @@ def main():
 
     # Determine whether to launch
     config = load_config()
-    should_launch = args.launch or (config.get("always_launch", False) and not args.no_launch)
+    should_launch = args.launch or (
+        config.get("always_launch", False) and not args.no_launch
+    )
     if args.no_dangerously_skip_permissions:
         use_skip = False
     else:
-        use_skip = args.always_dangerously_skip_permissions or config.get("skip_permissions", False)
+        use_skip = args.always_dangerously_skip_permissions or config.get(
+            "skip_permissions", False
+        )
 
     if should_launch:
         print()
